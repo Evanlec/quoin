@@ -1,9 +1,9 @@
-quoin
-=====
+transport
+=========
 
 Description
 -----------
-Coding exercise for Quoin Inc.
+Coding exercise modeling a real world city transportation system
 
 Requirements
 ------------
