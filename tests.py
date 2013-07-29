@@ -41,6 +41,7 @@ class TestBalancePasses(TransportTest):
     def test_weekend_and_senior_discount(self):
         ticket = models.BalancePass(balance=45.0, customer_type='senior')
         ride = models.Ride('rail', date(2013, 7, 28))
+        self.machine.swipePass(ticket, ride)
         self.assertEqual(43.125, ticket.balance)
 
 if __name__ == '__main__':
