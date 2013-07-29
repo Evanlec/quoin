@@ -14,7 +14,7 @@ class BalancePass(Pass):
         self.balance = balance
     def adjustBalance(self, amount):
         if (self.balance + amount) < 0:
-            raise InvalidPassError('Ticket balance less than zero') 
+            raise InvalidPassError('Ticket balance would become less than zero') 
         else:
             self.balance = (self.balance + amount)
 

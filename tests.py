@@ -12,18 +12,21 @@ class TestMonthlyPasses(TransportTest):
     def test_expired_pass(self):
         ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,1))
         ride = models.Ride('bus', date(2013, 6, 2))
-        with self.assertRaises(models.InvalidPassError): self.machine.swipePass(ticket, ride)
+        with self.assertRaises(models.InvalidPassError):
+            self.machine.swipePass(ticket, ride)
     def test_invalid_transport_mode(self):
         ticket = models.MonthlyPass('subway', date(2013,5,1))
         ride = models.Ride('bus', date(2013,5,23))
-        with self.assertRaises(models.InvalidPassError): self.machine.swipePass(ticket, ride)
+        with self.assertRaises(models.InvalidPassError):
+            self.machine.swipePass(ticket, ride)
+    def test_add_money_to_monthly_pass(self):
+        ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,1))
+        with self.assertRaises(AttributeError):
+            self.machine.addMoneyToPass(ticket, 5.00)
     def test_pro_rated_discount(self):
         ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,23))
         self.machine.dispensePass(ticket)
         self.assertEqual(30.00, ticket.price)
-    def test_add_money_to_monthly_pass(self):
-        ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,1))
-        with self.assertRaises(AttributeError): self.machine.addMoneyToPass(ticket, 5.00)
 
 class TestBalancePasses(TransportTest):
     """Tests for passes with a balance loaded onto them"""
@@ -43,6 +46,11 @@ class TestBalancePasses(TransportTest):
         ride = models.Ride('rail', date(2013, 7, 28))
         self.machine.swipePass(ticket, ride)
         self.assertEqual(43.125, ticket.balance)
+    def test_not_enough_money(self):
+        ticket = models.BalancePass(balance=4.50)
+        ride = models.Ride('rail', date(2013, 5, 23))
+        with self.assertRaises(models.InvalidPassError):
+            self.machine.swipePass(ticket, ride)
 
 if __name__ == '__main__':
     unittest.main()
