@@ -1,0 +1,12 @@
+{
+    "rates": {
+        "bus": {"single_ride": 6.0, "monthly": 60.0},
+        "subway": {"single_ride": 4.0, "monthly": 40.0},
+        "rail": {"single_ride": 5.0, "monthly": 50.0},
+        "seniorbus": {"single_ride": 2.0, "monthly": 20.0}
+    },
+    "discounts": {
+        "customer": {"adult": 1.0, "student":0.50, "senior":0.50, "employee":0.0},
+        "length": 0.10
+    }
+}
