@@ -1,29 +1,28 @@
 from datetime import date
 
-class Customer(object):
-    def __init__(self, type, ticket):
-        self.ticket = ticket
-        self.type = type
-    def takeRide(self, ride, date):
-        if self.ticket.type == 'balance':
-            self.ticket.balance = (self.ticket.balance - (ride.fee * discounts[self.type]))
-            return self.ticket.balance
-        elif self.ticket.type == 'unlimited' and self.ticket.mode != ride.type:
-            raise ValueError("Customer cannot use this type of ticket on this ride!")
-        else:
-            raise ValueError("Bad customer type value: " + type)
+class InvalidPassError(Exception):
+    """Exception raised when a pass is swiped and user shall not be allowed further"""
+    pass
 
-class Ticket(object):
-    def __init__(self, type, purchase_date, mode=None, balance=0.00):
-        self.type = type
-        self.mode = mode
-        self.purchase_date = purchase_date
+class Pass(object):
+    def __init__(self, customer_type):
+        self.customer_type = customer_type
+
+class BalancePass(Pass):
+    def __init__(self, balance=0.0, customer_type='adult'):
+        super(BalancePass, self).__init__(customer_type)
         self.balance = balance
     def adjustBalance(self, amount):
         if (self.balance + amount) < 0:
-            print('Error: ticket balance less than zero') 
+            raise InvalidPassError('ticket balance less than zero') 
         else:
             self.balance = (self.balance + amount)
+
+class MonthlyPass(Pass):
+    def __init__(self, mode, purchase_date, customer_type='adult'):
+        super(MonthlyPass, self).__init__(customer_type)
+        self.mode = mode
+        self.purchase_date = purchase_date
 
 class Ride(object):
     def __init__(self, mode, date, ride_length=0):
@@ -34,51 +33,46 @@ class Ride(object):
 class VendingMachine(object):
     """Vending Machine class contains all relevant 'actions' for the system, and is initialized with
     rates/discount values, contains most of all business logic"""
-    def __init__(self, rates, discounts):
-        self.rates = rates
-        self.discounts = discounts
+    def __init__(self, data):
+        self.rates = data['rates']
+        self.discounts = data['discounts']
 
-    def dispensePass(self, customer, ticket, balance=0.00):
-        if ticket.type == 'balance':
+    def dispensePass(self, ticket, balance=0.00):
+        if hasattr(ticket, 'balance'):
             ticket.balance = balance
-            customer.ticket = ticket
             return "Customer purchased normal pass with starting balance of: %d" % ticket.balance
-        if ticket.type == 'unlimited':
+        if hasattr(ticket, 'mode'):
             base_price = self.rates[ticket.mode]['monthly']
             day_purchased = ticket.purchase_date.day
             if day_purchased > 15:
                 ticket.monthly_price = base_price * 0.50
             else:
                 ticket.monthly_price = base_price
-            customer.ticket = ticket
 
     def addMoneyToPass(self, ticket, amount):
-        if ticket.type == 'unlimited':
-            raise ValueError('Cannot add money to monthly pass type')
-        ticket.balance += amount
+        ticket.adjustBalance(amount)
         return "New ticket balance: %d" % ticket.balance
 
-    def swipePass(self, customer, ride):
+    def swipePass(self, ticket, ride):
         """pass is swiped when customer takes a ride"""
-        if customer.ticket.type == 'balance':
-            customer.ticket.adjustBalance(-1 * self.getSingleRidePrice(customer, ride))
-            return customer.ticket.balance
-        if customer.ticket.type == 'unlimited':
-            if customer.ticket.mode != ride.mode:
-                return "Error: Customer cannot use this type of ticket for this ride!"
+        if hasattr(ticket, 'balance'):
+            ticket.adjustBalance(-1 * self.getSingleRidePrice(ticket, ride))
+            return ticket.balance
+        if hasattr(ticket, 'mode'):
+            if ticket.mode != ride.mode:
+                raise InvalidPassError("Customer cannot use this type of ticket for this ride!")
 
     def checkBalance(self, ticket):
         return ticket.balance
 
-    def getSingleRidePrice(self, customer, ride):
+    def getSingleRidePrice(self, ticket, ride):
         # customer type discount
-        fee = (self.rates[ride.mode] * self.discounts['customer'][customer.type])
+        fee = (self.rates[ride.mode]['single_ride'] * self.discounts['customer'][ticket.customer_type])
         # weekend discount
         if ride.date.weekday() > 4:
             fee = fee * 0.75
-        if ride.length > 0:
-            fee = fee * (1 - (self.discounts['length'] * length))
-
+        if ride.ride_length > 0:
+            fee = fee * (1 - (self.discounts['length'] * ride.ride_length))
         return fee
 
     def calculateMonthlyPrice(self):

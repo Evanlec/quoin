@@ -1,46 +1,34 @@
-import unittest
+import unittest, json
 from datetime import date
 import models
 
-rates = {
-    'bus': {'single_ride': 6.00, 'monthly': 60.00},
-    'subway': {'single_ride': 4.00, 'monthly': 40.00},
-    'rail': {'single_ride': 5.00, 'monthly': 50.00},
-    'seniorbus': {'single_ride': 2.00, 'monthly': 20.00}
-}
-discounts = {
-    'customer': {'adult': 1.0, 'student':0.50, 'senior':0.50, 'employee':0.0},
-    'length': 0.10
-}
+class TransportTest(unittest.TestCase):
+    def setUp(self):
+        self.data = json.load(open('test_data.json'))
+        self.machine = models.VendingMachine(self.data)
 
-class TestMonthlyPasses(unittest.TestCase):
-    def SetUp(self):
-        self.rates = rates
-        self.discounts = discounts
-        self.ticket = models.Ticket(type='unlimited', mode='bus', purchase_date=date(2013,5,1))
-        self.cust = models.Customer(type='senior', ticket=self.ticket)
-    def test_take_ride(self):
-        ride = models.Ride('bus', date(2013, 5, 23))
-        self.machine.swipePass(self.cust, ride)
-        self.assertEqual(42.50, self.cust.ticket.balance)
-    def test_purchase_ticket(self):
-        machine.dispensePass(self.cust, self.ticket)
+class TestMonthlyPasses(TransportTest):
+    """Tests for monthly unlimited passes"""
+    def test_expired_pass(self):
+        ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,1), customer_type='senior')
+        ride = models.Ride('bus', date(2013, 6, 2))
+        self.assertRaises(models.InvalidPassError, self.machine.swipePass(ticket, ride))
+    def test_pro_rated_discount(self):
+        ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,23))
+        self.machine.dispensePass(ticket)
         self.assertEqual(30.00, ticket.monthly_price)
+    def test_add_money_to_monthly_pass(self):
+        ticket = models.MonthlyPass(mode='bus', purchase_date=date(2013,5,23))
+        with self.assertRaises(AttributeError): self.machine.addMoneyToPass(ticket, 5.00)
 
-class TestBalancePasses(unittest.TestCase):
+class TestBalancePasses(TransportTest):
     """Tests for passes with a balance loaded onto them"""
-    def SetUp(self):
-        self.rates = rates
-        self.discounts = discounts
-        machine = models.VendingMachine(self.rates, self.discounts)
-        ticket = models.Ticket(type='balance', purchase_date=date(2013,5,1), balance=45.00)
-        cust = models.Customer(type='senior', ticket=ticket)
-    def test_take_ride(self):
+    def test_senior_discount(self):
         """Test that ticket balance is adjusted properly when taking a ride"""
-        machine = models.VendingMachine(self.rates, self.discounts)
+        ticket = models.BalancePass(balance=45.0, customer_type='senior')
         ride = models.Ride('rail', date(2013, 5, 23))
-        machine.swipePass(self.cust, ride)
-        self.assertEqual(42.50, self.cust.ticket.balance)
+        self.machine.swipePass(ticket, ride)
+        self.assertEqual(42.50, ticket.balance)
 
 if __name__ == '__main__':
     unittest.main()
