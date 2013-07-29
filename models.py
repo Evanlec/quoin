@@ -14,7 +14,7 @@ class BalancePass(Pass):
         self.balance = balance
     def adjustBalance(self, amount):
         if (self.balance + amount) < 0:
-            raise InvalidPassError('ticket balance less than zero') 
+            raise InvalidPassError('Ticket balance less than zero') 
         else:
             self.balance = (self.balance + amount)
 
@@ -42,12 +42,8 @@ class VendingMachine(object):
             ticket.balance = balance
             return "Customer purchased normal pass with starting balance of: %d" % ticket.balance
         if hasattr(ticket, 'mode'):
-            base_price = self.rates[ticket.mode]['monthly']
-            day_purchased = ticket.purchase_date.day
-            if day_purchased > 15:
-                ticket.monthly_price = base_price * 0.50
-            else:
-                ticket.monthly_price = base_price
+            ticket.price = self.getMonthlyPrice(ticket)
+            return "Customer purchased monthly pass for total price of: %d" % ticket.price
 
     def addMoneyToPass(self, ticket, amount):
         ticket.adjustBalance(amount)
@@ -60,7 +56,9 @@ class VendingMachine(object):
             return ticket.balance
         if hasattr(ticket, 'mode'):
             if ticket.mode != ride.mode:
-                raise InvalidPassError("Customer cannot use this type of ticket for this ride!")
+                raise InvalidPassError("Customer cannot use a %s ticket for a %s ride" % (ticket.mode, ride.mode))
+            if ticket.purchase_date.month != ride.date.month:
+                raise InvalidPassError("Monthly pass purchased on %s cannot be used for ride on %s" % (ticket.purchase_date, ride.date))
 
     def checkBalance(self, ticket):
         return ticket.balance
@@ -71,14 +69,15 @@ class VendingMachine(object):
         # weekend discount
         if ride.date.weekday() > 4:
             fee = fee * 0.75
+        # ride length discount
         if ride.ride_length > 0:
             fee = fee * (1 - (self.discounts['length'] * ride.ride_length))
         return fee
 
-    def calculateMonthlyPrice(self):
-        self.monthly_price = transports[self.mode]['monthly']
-        day_purchased = self.purchase_date.day
+    def getMonthlyPrice(self, ticket):
+        price = self.rates[ticket.mode]['monthly']
+        day_purchased = ticket.purchase_date.day
         if day_purchased > 15:
-            return self.monthly_price * 0.50
+            return price * 0.50
         else:
-            return self.monthly_price
+            return price
